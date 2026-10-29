@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LecturerDesk - Smart Timetable & Lecture Companion</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- TOP NAVBAR -->
+  <header class="bg-slate-900 text-white shadow-md sticky top-0 z-40 border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center space-x-3">
+        <div class="bg-indigo-600 p-2 rounded-lg text-white">
+          <i class="fa-solid fa-chalkboard-user text-lg"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-base tracking-wide">LecturerDesk</h1>
+          <p class="text-[11px] text-slate-400">Classroom Timetable & Lecture Delivery System</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-3">
+        <div class="text-right hidden sm:block mr-2">
+          <div id="live-clock" class="text-xs font-mono font-semibold tracking-wider text-indigo-400">--:--:--</div>
+          <div id="live-date" class="text-[11px] text-slate-400">--</div>
+        </div>
+        <button onclick="openModal('add-course-modal')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-3 py-2 rounded shadow flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-folder-plus"></i> New Course
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-7xl mx-auto p-4 sm:p-6 w-full flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- LEFT COLUMN: Timetable & Topic Navigation (4 Cols) -->
+    <section class="lg:col-span-4 space-y-5">
+
+      <!-- NEXT CLASS BANNER -->
+      <div class="bg-gradient-to-br from-indigo-700 via-indigo-800 to-slate-900 text-white rounded-xl p-5 shadow-lg relative overflow-hidden">
+        <div class="flex items-center gap-2 text-indigo-300 text-xs font-semibold uppercase tracking-wider mb-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          Up Next On Your Timetable
+        </div>
+        <h2 id="next-course-title" class="text-lg font-bold">Scanning timetable...</h2>
+        <p id="next-class-meta" class="text-indigo-200 text-xs mt-1">--</p>
+        
+        <div class="mt-4 pt-3 border-t border-indigo-600/60 flex justify-between items-center">
+          <div class="truncate mr-2">
+            <span class="text-[10px] uppercase tracking-wider text-indigo-300 font-bold block">Next Topic</span>
+            <span id="next-topic-badge" class="text-xs font-medium text-white truncate block">--</span>
+          </div>
+          <button id="jump-to-next-btn" class="bg-white text-indigo-900 hover:bg-indigo-50 text-xs font-bold px-3 py-1.5 rounded shadow shrink-0 transition">
+            Open Prep <i class="fa-solid fa-arrow-right ml-1"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Weekly Schedule -->
+      <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-regular fa-calendar-days text-indigo-600"></i> Weekly Schedule
+          </h3>
+          <span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-medium">Recurring</span>
+        </div>
+        <div id="schedule-list" class="space-y-2 text-xs"></div>
+      </div>
+
+      <!-- Course & Topics Explorer -->
+      <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+        <div class="flex justify-between items-center mb-2">
+          <h3 class="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-list-ol text-indigo-600"></i> Course Syllabus
+          </h3>
+          <button onclick="openModal('add-topic-modal')" class="text-indigo-600 hover:text-indigo-800 text-xs font-semibold flex items-center gap-1">
+            <i class="fa-solid fa-plus"></i> Add Topic
+          </button>
+        </div>
+
+        <select id="course-selector" class="w-full text-xs font-semibold bg-slate-50 border border-slate-300 text-slate-700 rounded-lg p-2.5 mb-3 focus:outline-none focus:ring-1 focus:ring-indigo-500"></select>
+
+        <div id="topics-list" class="space-y-1.5 max-h-[300px] overflow-y-auto pr-1"></div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT COLUMN: Lecture Delivery & Quiz Workspace (8 Cols) -->
+    <section class="lg:col-span-8 flex flex-col space-y-4">
+
+      <!-- Topic Action Header -->
+      <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2 mb-1.5">
+            <span id="active-course-code" class="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase">--</span>
+            <span id="active-topic-status" class="bg-slate-100 text-slate-700 text-[10px] font-semibold px-2 py-0.5 rounded">--</span>
+          </div>
+          <h2 id="active-topic-title" class="text-lg font-bold text-slate-900 leading-snug">Select a topic to start</h2>
+          <p id="active-topic-duration" class="text-xs text-slate-500 mt-0.5"><i class="fa-regular fa-clock"></i> 50 minutes delivery</p>
+        </div>
+
+        <div class="flex items-center gap-2 shrink-0">
+          <button onclick="generateWithAI()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 transition">
+            <i class="fa-solid fa-wand-magic-sparkles text-amber-500"></i> Auto-Generate Content
+          </button>
+          <button id="mark-complete-btn" onclick="markCompleteAndNext()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-2 rounded-lg shadow flex items-center gap-1.5 transition">
+            <i class="fa-solid fa-check"></i> Mark Taught & Next
+          </button>
+        </div>
+      </div>
+
+      <!-- Workspace Tabs -->
+      <div class="bg-white border border-slate-200 rounded-xl shadow-sm flex-1 flex flex-col overflow-hidden">
+        
+        <!-- Tab Buttons -->
+        <div class="flex border-b border-slate-200 bg-slate-50 text-xs font-semibold">
+          <button onclick="switchTab('lecture-tab')" id="tab-btn-lecture-tab" class="tab-btn px-5 py-3 border-b-2 border-indigo-600 text-indigo-600 bg-white flex items-center gap-2">
+            <i class="fa-solid fa-book-open"></i> Full Lecture Delivery Plan
+          </button>
+          <button onclick="switchTab('quiz-tab')" id="tab-btn-quiz-tab" class="tab-btn px-5 py-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-clipboard-question"></i> Formative Quiz Deck
+          </button>
+          <button onclick="switchTab('tips-tab')" id="tab-btn-tips-tab" class="tab-btn px-5 py-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-lightbulb"></i> Teaching Tips & Misconceptions
+          </button>
+        </div>
+
+        <!-- Tab 1: Lecture Notes & Hook -->
+        <div id="lecture-tab" class="tab-content p-5 space-y-5 flex-1 overflow-y-auto">
+          <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-amber-800 flex items-center gap-1.5 mb-1.5">
+              <i class="fa-solid fa-bolt text-amber-600"></i> Class Opening Hook / 5-Min Icebreaker
+            </h4>
+            <p id="lecture-hook" class="text-xs text-amber-950 leading-relaxed italic">--</p>
+          </div>
+
+          <div>
+            <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3">Time-Stamped Delivery Outline</h3>
+            <div id="lecture-outline" class="space-y-3 text-xs"></div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Pop Quiz & Checkpoints -->
+        <div id="quiz-tab" class="tab-content hidden p-5 space-y-4 flex-1 overflow-y-auto">
+          <div class="flex justify-between items-center mb-1">
+            <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">In-Class Checkpoints</h3>
+            <span class="text-[11px] text-slate-400">Click any card to reveal answer</span>
+          </div>
+          <div id="quiz-list" class="space-y-2.5"></div>
+        </div>
+
+        <!-- Tab 3: Misconceptions & Board Work -->
+        <div id="tips-tab" class="tab-content hidden p-5 space-y-4 flex-1 overflow-y-auto">
+          <div class="border-l-4 border-rose-500 bg-rose-50 p-4 rounded-r-lg">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-rose-800 flex items-center gap-1.5 mb-1">
+              <i class="fa-solid fa-triangle-exclamation text-rose-600"></i> Common Student Confusion & Pitfalls
+            </h4>
+            <p id="tips-misconception" class="text-xs text-slate-700 leading-relaxed">--</p>
+          </div>
+
+          <div class="border-l-4 border-indigo-500 bg-indigo-50 p-4 rounded-r-lg">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-indigo-800 flex items-center gap-1.5 mb-1">
+              <i class="fa-solid fa-chalkboard text-indigo-600"></i> Recommended Board-Work Anchor
+            </h4>
+            <p id="tips-anchor" class="text-xs text-slate-700 leading-relaxed">--</p>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- MODAL: ADD COURSE -->
+  <div id="add-course-modal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-xl max-w-sm w-full p-5 space-y-4">
+      <div class="flex justify-between items-center pb-2 border-b">
+        <h3 class="font-bold text-sm text-slate-800">Add New Course</h3>
+        <button onclick="closeModal('add-course-modal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Course Code</label>
+          <input id="new-course-code" type="text" placeholder="e.g. CS201" class="w-full border rounded p-2">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Course Title</label>
+          <input id="new-course-title" type="text" placeholder="e.g. Data Structures" class="w-full border rounded p-2">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Day of Week</label>
+            <select id="new-course-day" class="w-full border rounded p-2">
+              <option value="1">Monday</option>
+              <option value="2">Tuesday</option>
+              <option value="3">Wednesday</option>
+              <option value="4">Thursday</option>
+              <option value="5">Friday</option>
+              <option value="6">Saturday</option>
+              <option value="0">Sunday</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Class Time</label>
+            <input id="new-course-time" type="time" value="10:00" class="w-full border rounded p-2">
+          </div>
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Room / Hall</label>
+          <input id="new-course-room" type="text" placeholder="Room 402" class="w-full border rounded p-2">
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-2 border-t">
+        <button onclick="closeModal('add-course-modal')" class="px-3 py-1.5 text-xs text-slate-600">Cancel</button>
+        <button onclick="saveCourse()" class="px-4 py-1.5 text-xs font-bold bg-indigo-600 text-white rounded">Save Course</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD TOPIC -->
+  <div id="add-topic-modal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-xl max-w-sm w-full p-5 space-y-4">
+      <div class="flex justify-between items-center pb-2 border-b">
+        <h3 class="font-bold text-sm text-slate-800">Add Topic to Syllabus</h3>
+        <button onclick="closeModal('add-topic-modal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Topic Title</label>
+          <input id="new-topic-title" type="text" placeholder="e.g. Binary Search Trees" class="w-full border rounded p-2">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Duration</label>
+          <input id="new-topic-duration" type="text" value="50 mins" class="w-full border rounded p-2">
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-2 border-t">
+        <button onclick="closeModal('add-topic-modal')" class="px-3 py-1.5 text-xs text-slate-600">Cancel</button>
+        <button onclick="saveTopic()" class="px-4 py-1.5 text-xs font-bold bg-indigo-600 text-white rounded">Add Topic</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- APPLICATION JAVASCRIPT -->
+  <script>
+    const INITIAL_DATA = {
+      courses: [
+        {
+          id: "cs101",
+          code: "CS101",
+          title: "Computer Systems & Architecture",
+          day: 1, // Monday
+          time: "09:30",
+          room: "Auditorium A",
+          activeTopicIndex: 1,
+          topics: [
+            {
+              title: "1. Von Neumann Architecture & Bus Systems",
+              duration: "50 mins",
+              hook: "Ask: 'If you double the CPU clock speed from 2GHz to 4GHz, why does your computer NOT run twice as fast?' (Introduces the memory bus bottleneck).",
+              outline: [
+                { time: "10 mins", title: "ALU, Registers & Program Counter", body: "Explain registers as ultra-fast internal scratchpads. Trace how the Program Counter steps through addresses." },
+                { time: "25 mins", title: "Fetch-Decode-Execute Cycle", body: "Step-by-step trace of a simple ADD instruction through Data Bus, Control Unit, and Accumulator." },
+                { time: "15 mins", title: "The Memory Wall", body: "Why bus latency prevents the CPU from reaching theoretical peak throughput." }
+              ],
+              quiz: [
+                { q: "What is the primary role of the Program Counter (PC)?", a: "It stores the memory address of the next instruction to be fetched." },
+                { q: "True or False: The ALU stores program instructions permanently.", a: "False. The ALU only performs arithmetic/logic computations." }
+              ],
+              misconception: "Students often believe the CPU directly runs code out of RAM. Remind them instructions must first be transferred into registers.",
+              anchor: "Draw three distinct boxes on the board: CPU, Bus, and RAM. Use arrows to show the flow of instructions vs data."
+            },
+            {
+              title: "2. Memory Hierarchy & Caching Principles",
+              duration: "50 mins",
+              hook: "Show a desk with a pencil holder (L1 cache), a drawer (RAM), and a library down the street (Hard Disk / SSD) to illustrate access times.",
+              outline: [
+                { time: "10 mins", title: "Spatial vs Temporal Locality", body: "Temporal: accessed recently, will access again soon. Spatial: accessed index i, likely to access i+1." },
+                { time: "25 mins", title: "L1, L2, L3 Cache Levels", body: "Explain trade-offs between SRAM cost/speed versus DRAM capacity. Explain Cache Hits and Cache Misses." },
+                { time: "15 mins", title: "Matrix Traversal Demo", body: "Show why row-major loop ordering runs 10x faster than column-major due to cache lines." }
+              ],
+              quiz: [
+                { q: "Which type of memory is used for CPU caches due to its speed?", a: "SRAM (Static RAM)." },
+                { q: "If an array is accessed sequentially, which locality principle is being leveraged?", a: "Spatial locality." }
+              ],
+              misconception: "Students frequently confuse Cache with Virtual Memory. Clarify that Cache speeds up RAM; Virtual Memory extends RAM using storage.",
+              anchor: "Draw the Memory Pyramid: Registers at the top tip, then L1/L2/L3, then RAM, then SSD/Disk at the base."
+            }
+          ]
+        },
+        {
+          id: "cs202",
+          code: "CS202",
+          title: "Algorithms & Problem Solving",
+          day: 3, // Wednesday
+          time: "14:00",
+          room: "Lab 3",
+          activeTopicIndex: 0,
+          topics: [
+            {
+              title: "1. Divide & Conquer: Merge Sort Analysis",
+              duration: "60 mins",
+              hook: "Tear a piece of paper into halves repeatedly until you reach 1 piece. How many tears did it take? (Logarithmic intuition).",
+              outline: [
+                { time: "15 mins", title: "The Divide, Conquer, Combine Pattern", body: "Deconstructing problems into identical subproblems until base cases are trivial." },
+                { time: "30 mins", title: "The Merge Step and Two-Pointer Walk", body: "Demonstrate merging two sorted sub-lists in linear O(N) time with two pointers." },
+                { time: "15 mins", title: "Recurrence Tree: T(n) = 2T(n/2) + O(n)", body: "Explain why every level sums to cn, giving total depth log2(n) * cn = O(n log n)." }
+              ],
+              quiz: [
+                { q: "What is the space complexity of standard Merge Sort?", a: "O(n) auxiliary memory for merging buffers." },
+                { q: "Is Merge Sort a stable sorting algorithm?", a: "Yes, because it preserves relative order of equal keys when using <= during merge." }
+              ],
+              misconception: "Students assume divide and conquer requires extra threads. Clarify that it is a conceptual design pattern, not multithreading.",
+              anchor: "Draw the recursive tree down to single elements, then invert the diagram to show merging back upward."
+            }
+          ]
+        }
+      ]
+    };
+
+    // State management
+    let appData = JSON.parse(localStorage.getItem("lecturer_os_v1")) || INITIAL_DATA;
+    let selectedCourseId = appData.courses[0].id;
+    let selectedTopicIndex = appData.courses[0].activeTopicIndex;
+
+    function save() {
+      localStorage.setItem("lecturer_os_v1", JSON.stringify(appData));
+    }
+
+    // Live Clock & Next Class Finder
+    function tick() {
+      const now = new Date();
+      document.getElementById("live-clock").textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      document.getElementById("live-date").textContent = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+      evaluateNextClass(now);
+    }
+
+    function evaluateNextClass(now) {
+      const curDay = now.getDay();
+      const curMins = now.getHours() * 60 + now.getMinutes();
+
+      let closest = null;
+      let minDiff = Infinity;
+
+      appData.courses.forEach(c => {
+        const [h, m] = c.time.split(":").map(Number);
+        const targetMins = h * 60 + m;
+
+        let dayOffset = c.day - curDay;
+        if (dayOffset < 0 || (dayOffset === 0 && targetMins < curMins)) {
+          dayOffset += 7;
+        }
+
+        const totalDiff = (dayOffset * 24 * 60) + (targetMins - curMins);
+        if (totalDiff < minDiff) {
+          minDiff = totalDiff;
+          closest = { course: c, diff: totalDiff };
+        }
+      });
+
+      if (closest) {
+        const c = closest.course;
+        const topic = c.topics[c.activeTopicIndex] || { title: "All syllabus topics covered!" };
+        document.getElementById("next-course-title").textContent = `${c.code} • ${c.title}`;
+        
+        let timeLabel = "";
+        if (closest.diff === 0) timeLabel = "Starting right now!";
+        else if (closest.diff < 60) timeLabel = `In ${closest.diff} mins`;
+        else if (closest.diff < 1440) timeLabel = `In ${Math.round(closest.diff / 60)} hours`;
+        else timeLabel = `${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][c.day]} at ${c.time}`;
+
+        document.getElementById("next-class-meta").textContent = `${timeLabel} • ${c.room}`;
+        document.getElementById("next-topic-badge").textContent = topic.title;
+
+        document.getElementById("jump-to-next-btn").onclick = () => {
+          selectCourse(c.id, c.activeTopicIndex);
+        };
+      }
+    }
+
+    // Render Helpers
+    function renderSchedule() {
+      const el = document.getElementById("schedule-list");
+      el.innerHTML = "";
+      const days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+      
+      [...appData.courses].sort((a,b) => a.day - b.day || a.time.localeCompare(b.time)).forEach(c => {
+        const row = document.createElement("div");
+        row.className = "flex items-center justify-between p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition";
+        row.onclick = () => selectCourse(c.id, c.activeTopicIndex);
+        row.innerHTML = `
+          <div>
+            <div class="font-bold text-slate-800">${c.code} <span class="font-normal text-slate-500">• ${c.title}</span></div>
+            <div class="text-[11px] text-slate-400">${days[c.day]} at ${c.time} • ${c.room}</div>
+          </div>
+          <span class="text-[10px] font-bold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">Topic ${c.activeTopicIndex + 1}/${c.topics.length}</span>
+        `;
+        el.appendChild(row);
+      });
+    }
+
+    function renderCourseDropdown() {
+      const sel = document.getElementById("course-selector");
+      sel.innerHTML = "";
+      appData.courses.forEach(c => {
+        const opt = document.createElement("option");
+        opt.value = c.id;
+        opt.textContent = `${c.code} - ${c.title}`;
+        if (c.id === selectedCourseId) opt.selected = true;
+        sel.appendChild(opt);
+      });
+      sel.onchange = (e) => {
+        const c = appData.courses.find(x => x.id === e.target.value);
+        selectCourse(c.id, c.activeTopicIndex);
+      };
+    }
+
+    function renderTopics() {
+      const container = document.getElementById("topics-list");
+      container.innerHTML = "";
+      const course = appData.courses.find(c => c.id === selectedCourseId);
+      if (!course) return;
+
+      course.topics.forEach((t, idx) => {
+        const isCurrent = idx === course.activeTopicIndex;
+        const isDone = idx < course.activeTopicIndex;
+        const isSelected = idx === selectedTopicIndex;
+
+        const row = document.createElement("div");
+        row.className = `p-2.5 rounded-lg border text-xs cursor-pointer flex items-center justify-between transition ${
+          isSelected ? "border-indigo-600 bg-indigo-50/70 font-semibold text-indigo-900" : "border-slate-200 hover:bg-slate-50 text-slate-700"
+        }`;
+
+        let icon = isDone 
+          ? '<i class="fa-solid fa-circle-check text-emerald-500"></i>' 
+          : (isCurrent 
+              ? '<span class="w-2 h-2 rounded-full bg-amber-500"></span>' 
+              : '<i class="fa-regular fa-circle text-slate-300"></i>');
+
+        row.innerHTML = `
+          <div class="flex items-center gap-2 truncate mr-2">
+            ${icon}
+            <span class="truncate ${isDone ? 'line-through text-slate-400' : ''}">${t.title}</span>
+          </div>
+          ${isCurrent ? '<span class="text-[9px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded uppercase">Current</span>' : ''}
+        `;
+        row.onclick = () => {
+          selectedTopicIndex = idx;
+          renderWorkspace();
+          renderTopics();
+        };
+        container.appendChild(row);
+      });
+    }
+
+    function renderWorkspace() {
+      const course = appData.courses.find(c => c.id === selectedCourseId);
+      if (!course) return;
+
+      const topic = course.topics[selectedTopicIndex];
+      if (!topic) {
+        document.getElementById("active-topic-title").textContent = "No topics available in this course.";
+        return;
+      }
+
+      document.getElementById("active-course-code").textContent = course.code;
+      document.getElementById("active-topic-title").textContent = topic.title;
+      document.getElementById("active-topic-duration").innerHTML = `<i class="fa-regular fa-clock"></i> ${topic.duration || '50 mins'}`;
+
+      const statusTag = document.getElementById("active-topic-status");
+      if (selectedTopicIndex < course.activeTopicIndex) {
+        statusTag.className = "bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded";
+        statusTag.textContent = "Delivered / Completed";
+      } else if (selectedTopicIndex === course.activeTopicIndex) {
+        statusTag.className = "bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded";
+        statusTag.textContent = "Active Scheduled Topic";
+      } else {
+        statusTag.className = "bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded";
+        statusTag.textContent = "Upcoming Topic";
+      }
+
+      // Tab 1: Lecture Notes
+      document.getElementById("lecture-hook").textContent = topic.hook || "Present a real-world case study or practical paradox to open the lecture.";
+      
+      const outlineEl = document.getElementById("lecture-outline");
+      outlineEl.innerHTML = "";
+      if (topic.outline && topic.outline.length > 0) {
+        topic.outline.forEach((sec, idx) => {
+          const div = document.createElement("div");
+          div.className = "p-3.5 bg-slate-50 border border-slate-200 rounded-lg";
+          div.innerHTML = `
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-slate-800">${idx + 1}. ${sec.title}</span>
+              <span class="text-[10px] font-semibold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded">${sec.time}</span>
+            </div>
+            <p class="text-slate-600 text-xs leading-relaxed">${sec.body}</p>
+          `;
+          outlineEl.appendChild(div);
+        });
+      } else {
+        outlineEl.innerHTML = `<p class="text-xs text-slate-400">Click 'Auto-Generate Content' above to build a lecture outline.</p>`;
+      }
+
+      // Tab 2: Quizzes
+      const quizEl = document.getElementById("quiz-list");
+      quizEl.innerHTML = "";
+      if (topic.quiz && topic.quiz.length > 0) {
+        topic.quiz.forEach((q, idx) => {
+          const item = document.createElement("div");
+          item.className = "border border-slate-200 rounded-lg p-3 hover:border-indigo-400 bg-white transition cursor-pointer";
+          item.innerHTML = `
+            <div class="flex justify-between items-start text-xs font-semibold text-slate-800">
+              <span><span class="text-indigo-600 font-bold">Q${idx + 1}:</span> ${q.q}</span>
+              <i class="fa-solid fa-chevron-down text-slate-400 ml-2 mt-0.5"></i>
+            </div>
+            <div class="answer-box hidden mt-2 pt-2 border-t border-slate-100 text-xs text-emerald-700 font-medium bg-emerald-50/50 p-2 rounded">
+              <i class="fa-solid fa-check mr-1"></i> Answer: ${q.a}
+            </div>
+          `;
+          item.onclick = () => item.querySelector(".answer-box").classList.toggle("hidden");
+          quizEl.appendChild(item);
+        });
+      } else {
+        quizEl.innerHTML = `<p class="text-xs text-slate-400">No pop-quiz questions added yet.</p>`;
+      }
+
+      // Tab 3: Tips
+      document.getElementById("tips-misconception").textContent = topic.misconception || "Students frequently misunderstand the boundary conditions of this concept.";
+      document.getElementById("tips-anchor").textContent = topic.anchor || "Write the fundamental definition and formula on the left board and leave it visible for the whole hour.";
+    }
+
+    // Actions
+    function selectCourse(courseId, topicIdx = 0) {
+      selectedCourseId = courseId;
+      selectedTopicIndex = topicIdx;
+      renderAll();
+    }
+
+    function markCompleteAndNext() {
+      const c = appData.courses.find(x => x.id === selectedCourseId);
+      if (!c) return;
+
+      if (c.activeTopicIndex < c.topics.length - 1) {
+        c.activeTopicIndex++;
+        selectedTopicIndex = c.activeTopicIndex;
+        save();
+        renderAll();
+      } else {
+        alert("Well done! All topics for " + c.code + " are marked as completed.");
+      }
+    }
+
+    function generateWithAI() {
+      const c = appData.courses.find(x => x.id === selectedCourseId);
+      const t = c.topics[selectedTopicIndex];
+
+      // Instant programmatic generator for any topic
+      t.hook = `Hold up a familiar real-world object and ask: 'How would you scale ${t.title} to serve 1 million concurrent users without latency?'`;
+      t.outline = [
+        { time: "10 mins", title: `Foundational Definitions: ${t.title}`, body: "Establish formal terminology, scope, and mathematical/logical constraints." },
+        { time: "25 mins", title: `Core Mechanism & Step-by-Step Walkthrough`, body: "Work through a comprehensive live example on the blackboard from scratch." },
+        { time: "15 mins", title: `Edge Cases & Production Trade-offs`, body: "Discuss real-world failure modes, resource limits, and optimization techniques." }
+      ];
+      t.quiz = [
+        { q: `What is the single most critical trade-off when implementing ${t.title}?`, a: "Balancing resource consumption (memory/compute) against execution throughput." },
+        { q: `What condition leads to the worst-case behavior in this scenario?`, a: "Degenerate input patterns or unhandled null/boundary conditions." }
+      ];
+      t.misconception = `Students often treat ${t.title} as a general-purpose solution rather than recognizing the specific constraints where it applies.`;
+      t.anchor = `Diagram the input-process-output pipeline clearly on the primary blackboard.`;
+
+      save();
+      renderWorkspace();
+    }
+
+    function switchTab(id) {
+      document.querySelectorAll(".tab-content").forEach(el => el.classList.add("hidden"));
+      document.querySelectorAll(".tab-btn").forEach(el => {
+        el.classList.remove("border-indigo-600", "text-indigo-600", "bg-white");
+        el.classList.add("border-transparent", "text-slate-500");
+      });
+      document.getElementById(id).classList.remove("hidden");
+      const btn = document.getElementById("tab-btn-" + id);
+      btn.classList.remove("border-transparent", "text-slate-500");
+      btn.classList.add("border-indigo-600", "text-indigo-600", "bg-white");
+    }
+
+    // Modals
+    function openModal(id) { document.getElementById(id).classList.remove("hidden"); document.getElementById(id).classList.add("flex"); }
+    function closeModal(id) { document.getElementById(id).classList.add("hidden"); document.getElementById(id).classList.remove("flex"); }
+
+    function saveCourse() {
+      const code = document.getElementById("new-course-code").value.trim();
+      const title = document.getElementById("new-course-title").value.trim();
+      const day = parseInt(document.getElementById("new-course-day").value);
+      const time = document.getElementById("new-course-time").value;
+      const room = document.getElementById("new-course-room").value.trim() || "Hall 1";
+
+      if (!code || !title) return alert("Please fill code and title.");
+
+      const newC = {
+        id: "c_" + Date.now(),
+        code, title, day, time, room,
+        activeTopicIndex: 0,
+        topics: [{
+          title: "1. Course Overview & Introduction",
+          duration: "50 mins",
+          hook: "Discuss why this subject is essential for modern industry.",
+          outline: [{ time: "50 mins", title: "Syllabus, Expectations & Project Roadmap", body: "Introduce key milestones and assessment criteria." }],
+          quiz: [{ q: "What is the passing criterion for the laboratory component?", a: "Minimum 50% in coursework submissions." }]
+        }]
+      };
+
+      appData.courses.push(newC);
+      save();
+      closeModal('add-course-modal');
+      selectCourse(newC.id, 0);
+    }
+
+    function saveTopic() {
+      const title = document.getElementById("new-topic-title").value.trim();
+      const duration = document.getElementById("new-topic-duration").value.trim() || "50 mins";
+      if (!title) return alert("Please enter topic title.");
+
+      const c = appData.courses.find(x => x.id === selectedCourseId);
+      const idx = c.topics.length + 1;
+      c.topics.push({
+        title: `${idx}. ${title}`,
+        duration,
+        hook: `Ask an open question related to ${title}.`,
+        outline: [{ time: duration, title: `Introduction to ${title}`, body: "Covers key concepts and practical application." }],
+        quiz: [{ q: `Define the primary goal of ${title}.`, a: "To achieve robust and scalable execution." }],
+        misconception: "Students often skip verifying edge conditions.",
+        anchor: `Write the main equation or schematic of ${title} on the board.`
+      });
+
+      save();
+      closeModal('add-topic-modal');
+      selectedTopicIndex = c.topics.length - 1;
+      renderAll();
+    }
+
+    function renderAll() {
+      renderCourseDropdown();
+      renderSchedule();
+      renderTopics();
+      renderWorkspace();
+      tick();
+    }
+
+    // Startup
+    setInterval(tick, 1000);
+    renderAll();
+  </script>
+</body>
+</html>
